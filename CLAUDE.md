@@ -6,20 +6,28 @@ This file is read by Claude Code at the start of every session in this repo.
 
 ## About This Repo
 
-<!-- TODO: describe what this project does -->
+This repo is the central home for reusable GitHub Actions workflows shared by every amcheste repo. Workflow logic lives here once, under `.github/workflows/reusable-*.yml`; each consuming repo keeps only a thin caller stub that pins a release tag of this repo. Fix or improve CI here, cut a release, and Dependabot propagates the new pin to every caller.
+
+- Reusable workflows are the product. Treat changes to them like library API changes: a breaking change to inputs or behavior is a major version bump.
+- This repo consumes its own reusables by local path (`uses: ./.github/workflows/...`), so its own CI exercises the current branch.
+- Lint here means actionlint over all workflow YAML plus markdownlint.
+- The versioning contract and rollout model are documented in the engineering-handbook design note on centralized CI.
 
 ---
 
 ## Developer Preferences
 
 ### Editor
+
 - Primary: Vim
 - AI editor: Cursor
 
 ### Shell
+
 - zsh, minimal prompt
 
 ### Git & GitHub Workflow
+
 - **Branch model:** `main` = latest release. `develop` = integration branch.
 - Always branch from `develop`, never commit directly
 - PRs always target `develop`
@@ -27,6 +35,7 @@ This file is read by Claude Code at the start of every session in this repo.
 - Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`
 
 ### Scripting Standards
+
 - Shell scripts must pass `shellcheck`
 - Use `set -euo pipefail`
 - Scripts should be idempotent

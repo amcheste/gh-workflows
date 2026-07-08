@@ -1,0 +1,39 @@
+name: Gitleaks (reusable)
+
+# Reusable secret-scan CI backstop. The primary defense in each repo is the
+# gitleaks pre-commit hook; this catches commits from contributors without
+# hooks installed, --no-verify bypasses, and automation sessions that don't
+# run local hooks.
+#
+# Caller stub (in each repo, .github/workflows/gitleaks.yml):
+#
+#   name: Gitleaks
+#   on:
+#     push:
+#       branches: [main, develop]
+#     pull_request:
+#       branches: [main, develop]
+#   permissions:
+#     contents: read
+#   jobs:
+#     gitleaks:
+#       uses: amcheste/gh-workflows/.github/workflows/reusable-gitleaks.yml@v1.0.0
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
