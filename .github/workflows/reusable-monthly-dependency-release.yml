@@ -1,0 +1,169 @@
+name: Monthly Dependency Release (reusable)
+
+# Reusable implementation of the monthly dependency release. Callers own the
+# schedule; this workflow owns the logic:
+#   1. If Dependabot merged dependency updates to the base branch since the
+#      last release tag, bump the patch version and open a release PR.
+#   2. Nothing is auto-merged or auto-tagged. A human stays in control.
+#
+# Caller stub (in each repo, .github/workflows/monthly-dependency-release.yml):
+#
+#   name: Monthly Dependency Release
+#   on:
+#     schedule:
+#       - cron: '0 9 1 * *'
+#     workflow_dispatch:
+#   permissions:
+#     contents: write
+#     pull-requests: write
+#   jobs:
+#     release:
+#       uses: amcheste/gh-workflows/.github/workflows/reusable-monthly-dependency-release.yml@v1.0.0
+#
+# Requires in the calling repo: a VERSION file at the root, and the repo
+# setting "Allow GitHub Actions to create and approve pull requests".
+
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: Integration branch to check and open the release PR against
+        type: string
+        required: false
+        default: develop
+
+permissions:
+  contents: read
+
+jobs:
+  open-release-pr:
+    name: Open patch release PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.base-branch }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Check for dependency commits since last tag
+        id: check
+        run: |
+          # List tags instead of 'git describe': release tags point at the
+          # --no-ff merge commits on main, which are never reachable from a
+          # develop checkout, so describe always came up empty here.
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+
+          if [[ -z "$LAST_TAG" ]]; then
+            echo "No tags found; skipping"
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Last tag: $LAST_TAG"
+
+          # Match Dependabot commit messages: "chore: bump/Bump <package>..."
+          DEP_COUNT=$(git log "${LAST_TAG}..HEAD" --no-merges --format='%s' \
+            | grep -cEi '^chore(\([^)]+\))?: [Bb]ump ' || true)
+
+          echo "Dependency commits since $LAST_TAG: $DEP_COUNT"
+
+          if [[ "$DEP_COUNT" -eq 0 ]]; then
+            echo "Nothing to release; skipping"
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "has_updates=true"
+              echo "last_tag=$LAST_TAG"
+              echo "dep_count=$DEP_COUNT"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for existing release PR
+        id: existing
+        if: steps.check.outputs.has_updates == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COUNT=$(gh pr list --base "${{ inputs.base-branch }}" --state open \
+            --search "chore: release" --json number --jq 'length')
+          if [[ "$COUNT" -gt 0 ]]; then
+            echo "Open release PR already exists; skipping"
+            echo "pr_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump patch version
+        id: bump
+        if: steps.check.outputs.has_updates == 'true' && steps.existing.outputs.pr_exists == 'false'
+        run: |
+          if [[ ! -f VERSION ]]; then
+            echo "ERROR: VERSION file not found; cannot bump version" >&2
+            exit 1
+          fi
+
+          CURRENT=$(tr -d '[:space:]' < VERSION)
+          BASE="${CURRENT%%-*}"  # strip any pre-release suffix
+
+          if [[ ! "$BASE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "ERROR: Invalid semver in VERSION: '$CURRENT'" >&2
+            exit 1
+          fi
+
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+
+          echo "$NEW_VERSION" > VERSION
+          echo "Bumped $CURRENT to $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "current_version=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          # Update CHANGELOG if present: move [Unreleased] to a versioned entry
+          if [[ -f CHANGELOG.md ]] && grep -q '## \[Unreleased\]' CHANGELOG.md; then
+            TODAY=$(date +%Y-%m-%d)
+            awk -v ver="$NEW_VERSION" -v date="$TODAY" '
+              /^## \[Unreleased\]$/ {
+                print "## [Unreleased]"
+                print ""
+                print "## [" ver "] - " date
+                next
+              }
+              { print }
+            ' CHANGELOG.md > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+            echo "Updated CHANGELOG.md"
+          fi
+
+      - name: Commit and open PR
+        if: steps.check.outputs.has_updates == 'true' && steps.existing.outputs.pr_exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          BRANCH="chore/release-v${NEW_VERSION}"
+          DEP_COUNT="${{ steps.check.outputs.dep_count }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add VERSION
+          [[ -f CHANGELOG.md ]] && git add CHANGELOG.md
+          git commit -m "chore: release v${NEW_VERSION}"
+          git push origin "$BRANCH"
+
+          # shellcheck disable=SC2016  # backticks in the PR body are literal markdown
+          printf '## Monthly dependency patch: v%s\n\nThis PR was opened automatically. It bumps the patch version to capture\n**%s Dependabot update(s)** merged to `%s` since the last release.\n\n## What to do\n1. Review the dependency commits included in this release\n2. Merge this PR into `%s`\n3. Promote develop to main via CLI merge (or run `/publish-release`)\n4. Push the tag to trigger the release pipeline\n\n> **Note:** CI will not auto-run on this PR due to GitHub token restrictions.\n> All dependency changes were individually validated by CI when Dependabot\n> merged them. Trigger CI manually if you want an extra check.\n' \
+            "${NEW_VERSION}" "${DEP_COUNT}" "${{ inputs.base-branch }}" "${{ inputs.base-branch }}" > /tmp/pr-body.md
+
+          gh pr create \
+            --base "${{ inputs.base-branch }}" \
+            --head "$BRANCH" \
+            --title "chore: release v${NEW_VERSION} (monthly dependency patch)" \
+            --body-file /tmp/pr-body.md
