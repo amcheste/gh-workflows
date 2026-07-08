@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Existing-release-PR guard now matches PR titles only. gh's `--search` also matches PR bodies, so any open PR merely mentioning "chore: release" suppressed the monthly release (found by the fleet pilot).
+
+### Added
+
+- Optional `RELEASE_PR_TOKEN` secret on the monthly release reusable. PRs created with the default `GITHUB_TOKEN` do not trigger `pull_request` workflows, so required checks never report on them; passing an App installation token or PAT gets a release PR whose CI runs on its own. Without it, the release PR body now instructs a one-time close/reopen.
+
 ## [1.0.0] - 2026-07-08
 
 ### Added

@@ -31,6 +31,16 @@ on:
         type: string
         required: false
         default: develop
+    secrets:
+      RELEASE_PR_TOKEN:
+        description: >-
+          Optional token used to create the release PR. PRs created with the
+          default GITHUB_TOKEN do not trigger pull_request workflows, so
+          required status checks never report on them; pass an App
+          installation token or PAT to get a release PR whose CI runs on its
+          own. Without it, close and reopen the release PR once to trigger
+          the checks.
+        required: false
 
 permissions:
   contents: read
@@ -88,8 +98,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Match on TITLE ONLY. gh's --search matches PR bodies too, so any
+          # open PR merely mentioning "chore: release" would suppress the
+          # monthly release (found by the fleet pilot, 2026-07-08).
           COUNT=$(gh pr list --base "${{ inputs.base-branch }}" --state open \
-            --search "chore: release" --json number --jq 'length')
+            --json title --jq '[.[] | select(.title | startswith("chore: release"))] | length')
           if [[ "$COUNT" -gt 0 ]]; then
             echo "Open release PR already exists; skipping"
             echo "pr_exists=true" >> "$GITHUB_OUTPUT"
@@ -143,7 +156,7 @@ jobs:
       - name: Commit and open PR
         if: steps.check.outputs.has_updates == 'true' && steps.existing.outputs.pr_exists == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           BRANCH="chore/release-v${NEW_VERSION}"
@@ -159,7 +172,7 @@ jobs:
           git push origin "$BRANCH"
 
           # shellcheck disable=SC2016  # backticks in the PR body are literal markdown
-          printf '## Monthly dependency patch: v%s\n\nThis PR was opened automatically. It bumps the patch version to capture\n**%s Dependabot update(s)** merged to `%s` since the last release.\n\n## What to do\n1. Review the dependency commits included in this release\n2. Merge this PR into `%s`\n3. Promote develop to main via CLI merge (or run `/publish-release`)\n4. Push the tag to trigger the release pipeline\n\n> **Note:** CI will not auto-run on this PR due to GitHub token restrictions.\n> All dependency changes were individually validated by CI when Dependabot\n> merged them. Trigger CI manually if you want an extra check.\n' \
+          printf '## Monthly dependency patch: v%s\n\nThis PR was opened automatically. It bumps the patch version to capture\n**%s Dependabot update(s)** merged to `%s` since the last release.\n\n## What to do\n1. Review the dependency commits included in this release\n2. Merge this PR into `%s`\n3. Promote develop to main via CLI merge (or run `/publish-release`)\n4. Push the tag to trigger the release pipeline\n\n> **Note:** if required checks show as expected without running, close and\n> reopen this PR once. PRs created with the default GITHUB_TOKEN do not\n> trigger CI; pass RELEASE_PR_TOKEN to the reusable workflow to avoid this.\n' \
             "${NEW_VERSION}" "${DEP_COUNT}" "${{ inputs.base-branch }}" "${{ inputs.base-branch }}" > /tmp/pr-body.md
 
           gh pr create \
