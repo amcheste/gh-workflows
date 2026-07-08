@@ -11,6 +11,7 @@ Only the latest release is actively maintained.
 Use GitHub's [private vulnerability reporting](../../security/advisories/new) to report issues confidentially.
 
 Please include:
+
 - A clear description of the vulnerability
 - Steps to reproduce
 - Potential impact
