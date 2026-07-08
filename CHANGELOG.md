@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-08
+
+### Added
+
+- Five more reusable workflows, completing the universal tier plus the docs/tooling validate: `reusable-validate.yml` (markdownlint, offline link check, optional shellcheck via `shellcheck-paths`, commit lint, semver suggestion), `reusable-sast.yml` (`semgrep-config` input, `p/secrets` floor), `reusable-scorecard.yml` (with a default-branch guard so pushes to non-default branches skip instead of failing), `reusable-stale.yml`, and `reusable-release-drafter.yml`.
+- This repo now self-consumes scorecard, stale, release-drafter, and sast as local-path stubs (validate stays local: this repo's lint is actionlint).
+
 ## [1.0.1] - 2026-07-08
 
 ### Fixed

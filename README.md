@@ -23,6 +23,11 @@ The model is documented in the [engineering handbook's centralized CI design not
 |---|---|---|
 | [`reusable-monthly-dependency-release.yml`](.github/workflows/reusable-monthly-dependency-release.yml) | On the caller's schedule, open a patch release PR if Dependabot commits landed on the base branch since the last release tag | `VERSION` file; "Allow GitHub Actions to create PRs" repo setting; `contents: write` and `pull-requests: write` |
 | [`reusable-gitleaks.yml`](.github/workflows/reusable-gitleaks.yml) | Secret-scan CI backstop (the first line of defense stays the local pre-commit hook) | nothing special |
+| [`reusable-validate.yml`](.github/workflows/reusable-validate.yml) | Docs/tooling validate: markdownlint, offline link check, optional shellcheck (`shellcheck-paths` input), commit lint, semver suggestion | `.markdownlint-cli2.jsonc`; required checks become `validate / Lint` and `validate / Commit Lint` |
+| [`reusable-sast.yml`](.github/workflows/reusable-sast.yml) | Semgrep static analysis (`semgrep-config` input; `p/secrets` floor) | nothing special |
+| [`reusable-scorecard.yml`](.github/workflows/reusable-scorecard.yml) | OpenSSF Scorecard with a default-branch guard (skips pushes to non-default branches instead of failing) | public repo for real scores |
+| [`reusable-stale.yml`](.github/workflows/reusable-stale.yml) | Issue/PR hygiene: stale at 30 days, close at 37; `pinned`/`security` exempt | nothing special |
+| [`reusable-release-drafter.yml`](.github/workflows/reusable-release-drafter.yml) | Accumulates draft release notes as PRs merge | `.github/release-drafter.yml` config |
 
 Each reusable workflow's header comment contains the exact caller stub to copy into a consuming repo.
 
