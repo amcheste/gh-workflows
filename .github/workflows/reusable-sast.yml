@@ -1,0 +1,57 @@
+name: SAST (reusable)
+
+# Reusable Semgrep static analysis. The rule packs are per-repo data,
+# passed as an input; p/secrets is the universal floor.
+#
+# Caller stub (in each repo, .github/workflows/sast.yml):
+#
+#   name: SAST
+#   on:
+#     push:
+#       branches: [main, develop]
+#     pull_request:
+#       branches: [main, develop]
+#     schedule:
+#       - cron: '0 2 * * 1'
+#   permissions:
+#     contents: read
+#   jobs:
+#     semgrep:
+#       uses: amcheste/gh-workflows/.github/workflows/reusable-sast.yml@v1.1.0
+#       with:
+#         semgrep-config: >-
+#           p/secrets
+#           p/bash
+
+on:
+  workflow_call:
+    inputs:
+      semgrep-config:
+        description: Semgrep rule packs, whitespace-separated (p/secrets is the universal floor)
+        type: string
+        required: false
+        default: p/secrets
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
+        with:
+          config: ${{ inputs.semgrep-config }}
+          generateSarif: "1"
+
+      - uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
+        if: always() && github.ref_name == github.event.repository.default_branch
+        continue-on-error: true
+        with:
+          sarif_file: semgrep.sarif
