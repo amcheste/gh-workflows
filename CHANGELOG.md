@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-08
+
 ### Fixed
 
 - Existing-release-PR guard now matches PR titles only. gh's `--search` also matches PR bodies, so any open PR merely mentioning "chore: release" suppressed the monthly release (found by the fleet pilot).
