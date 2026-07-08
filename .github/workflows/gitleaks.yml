@@ -10,8 +10,12 @@ on:
   pull_request:
     branches: [main, develop]
 
+# pull-requests:read is required here in the caller (reusable workflows
+# can't elevate the caller's token): gitleaks-action lists the PR's
+# commits to compute its scan range.
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   gitleaks:

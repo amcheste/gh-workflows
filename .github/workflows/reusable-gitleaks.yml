@@ -15,15 +15,23 @@ name: Gitleaks (reusable)
 #       branches: [main, develop]
 #   permissions:
 #     contents: read
+#     pull-requests: read
 #   jobs:
 #     gitleaks:
 #       uses: amcheste/gh-workflows/.github/workflows/reusable-gitleaks.yml@v1.0.0
+#
+# pull-requests:read is required in the CALLER: gitleaks-action lists the
+# PR's commits (GET /pulls/N/commits) to compute its scan range, and a
+# reusable workflow can only downgrade the caller's token, never elevate
+# it. Without the grant the job 403s ("Resource not accessible by
+# integration") before scanning anything.
 
 on:
   workflow_call: {}
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   gitleaks:
