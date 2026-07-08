@@ -1,0 +1,37 @@
+name: Release Drafter (reusable)
+
+# Reusable release-notes accumulator. The category/label mapping is data
+# and stays in each repo's .github/release-drafter.yml; the action reads
+# it from the calling repo.
+#
+# Caller stub (in each repo, .github/workflows/release-drafter.yml):
+#
+#   name: Release Drafter
+#   on:
+#     push:
+#       branches: [develop, main]
+#     workflow_dispatch:
+#   permissions:
+#     contents: write
+#     pull-requests: write
+#   jobs:
+#     draft:
+#       uses: amcheste/gh-workflows/.github/workflows/reusable-release-drafter.yml@v1.1.0
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  update-release-draft:
+    name: Update Release Draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: release-drafter/release-drafter@4d75298e00d9e34c483e5ff8c68d0ea1c1940c1e # v7.5.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
