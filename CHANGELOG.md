@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-08
+
 ### Added
 
 - `reusable-monthly-dependency-release.yml`: the monthly dependency release as a `workflow_call` reusable, with the tag-lookup fix baked in (`git tag --list` instead of `git describe`, `fetch-tags: true`) and a `base-branch` input.
