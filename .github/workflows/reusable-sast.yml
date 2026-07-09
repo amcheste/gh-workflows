@@ -15,6 +15,7 @@ name: SAST (reusable)
 #       - cron: '0 2 * * 1'
 #   permissions:
 #     contents: read
+#     security-events: write
 #   jobs:
 #     semgrep:
 #       uses: amcheste/gh-workflows/.github/workflows/reusable-sast.yml@v1.1.0
@@ -22,6 +23,11 @@ name: SAST (reusable)
 #         semgrep-config: >-
 #           p/secrets
 #           p/bash
+#
+# security-events:write is required in the CALLER: the semgrep job below
+# requests it (for the SARIF upload to code scanning), and a reusable
+# workflow can only downgrade the caller's token, never elevate it. A
+# caller granting only contents:read startup-fails before any job runs.
 
 on:
   workflow_call:
