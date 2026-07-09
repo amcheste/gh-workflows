@@ -33,7 +33,13 @@ name: OpenSSF Scorecard (reusable)
 on:
   workflow_call: {}
 
-permissions: read-all
+# Workflow-level must stay minimal: GitHub validates a called workflow's
+# workflow-level permissions against the caller's token too, and read-all
+# expands to read on every scope — more than the four grants the stub
+# makes, so read-all here startup-fails every call. The analysis job
+# requests exactly what it needs at job level.
+permissions:
+  contents: read
 
 jobs:
   analysis:
