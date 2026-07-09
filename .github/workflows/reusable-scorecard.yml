@@ -15,10 +15,20 @@ name: OpenSSF Scorecard (reusable)
 #     push:
 #       branches: [main, develop]
 #     workflow_dispatch:
-#   permissions: read-all
+#   permissions:
+#     security-events: write
+#     id-token: write
+#     contents: read
+#     actions: read
 #   jobs:
 #     scorecard:
 #       uses: amcheste/gh-workflows/.github/workflows/reusable-scorecard.yml@v1.1.0
+#
+# security-events:write (SARIF upload to code scanning) and id-token:write
+# (signed publish to the OpenSSF REST API) are required in the CALLER: the
+# analysis job below requests them, and a reusable workflow can only
+# downgrade the caller's token, never elevate it. A caller granting only
+# read-all startup-fails before any job runs.
 
 on:
   workflow_call: {}

@@ -11,7 +11,14 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
-permissions: read-all
+# security-events:write and id-token:write are required here in the caller
+# (reusable workflows can't elevate the caller's token): the analysis job
+# requests them for the SARIF upload and the signed OpenSSF publish.
+permissions:
+  security-events: write
+  id-token: write
+  contents: read
+  actions: read
 
 jobs:
   scorecard:

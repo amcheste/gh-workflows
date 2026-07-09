@@ -12,8 +12,12 @@ on:
   schedule:
     - cron: '0 2 * * 1'  # Every Monday at 02:00 UTC
 
+# security-events:write is required here in the caller (reusable workflows
+# can't elevate the caller's token): the semgrep job requests it for the
+# SARIF upload to code scanning.
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   semgrep:
